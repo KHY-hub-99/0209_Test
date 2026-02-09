@@ -1,12 +1,20 @@
 # 실행 방법
 
-- backend
-  - cmd창을 열고
-    - cd backend -> pip install -r requirements.txt -> uvicorn main:app --reload 순으로 입력
+### .env
 
-- frontend
-  - 새로운 cmd창을 열고
-    - cd frontend -> npm install -> node server.js 순으로 입력
+- MONGO_URL=YOUR_URL
+- DB_NAME=YOUR_DBNAME
+- COLLECTION_NAME=YOUR_COLLECTIONNAME
+
+### backend
+
+- cmd창을 열고
+  > cd backend -> pip install -r requirements.txt -> uvicorn main:app --reload 순으로 입력
+
+### frontend
+
+- 새로운 cmd창을 열고
+  > cd frontend -> npm install -> node server.js 순으로 입력
 
 > http://localhost:3000로 들어가서 이미지 파일 업로드로 시작
 
