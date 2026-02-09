@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pymongo
+torch
+torchvision
+pillow
+python-multipart
+requests
+python-dotenv

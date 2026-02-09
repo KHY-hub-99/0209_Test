@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>VisionCloud - AI Inference</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f4f4f9;
+      }
+      .container {
+        border: 1px solid #ddd;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        background-color: #fff;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        margin-top: 0;
+      }
+
+      button {
+        padding: 8px 16px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      button.secondary {
+        background-color: #6c757d;
+      }
+      button.secondary:hover {
+        background-color: #545b62;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+
+      input[type="file"],
+      input[type="text"] {
+        margin-bottom: 10px;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      /* Skip 입력창 전용 스타일 */
+      input[type="number"] {
+        padding: 4px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        width: 70px;
+        text-align: center;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: left;
+      }
+      th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+      }
+
+      .clickable-id {
+        color: #007bff;
+        cursor: pointer;
+        text-decoration: underline;
+        font-family: monospace;
+      }
+      .clickable-id:hover {
+        color: #0056b3;
+      }
+
+      .result-box {
+        background-color: #f1f3f5;
+        padding: 15px;
+        margin-top: 10px;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+      }
+      .score-bar {
+        background-color: #dee2e6;
+        height: 10px;
+        border-radius: 5px;
+        margin-top: 5px;
+        overflow: hidden;
+      }
+      .score-fill {
+        background-color: #28a745;
+        height: 100%;
+      }
+
+      .pagination-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+      }
+      .page-info {
+        font-size: 14px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>VisionCloud AI 분석</h1>
+
+    <div class="container">
+      <h2>이미지 분석 요청</h2>
+      <form id="uploadForm">
+        <input type="file" id="imageFile" accept="image/*" required />
+        <label
+          >모델명:
+          <input
+            type="text"
+            id="modelName"
+            value="efficientnet_b0"
+            readonly
+            style="background-color: #eee"
+          />
+        </label>
+        <button type="submit">분석 시작</button>
+      </form>
+      <div id="uploadResult" class="result-box" style="display: none"></div>
+    </div>
+
+    <div class="container">
+      <h2>결과 상세 조회</h2>
+      <div style="display: flex; gap: 10px">
+        <input
+          type="text"
+          id="searchIdInput"
+          placeholder="조회할 ID 입력 (예: 65c...)"
+          style="flex: 1; margin-bottom: 0"
+        />
+        <button onclick="searchById()" class="secondary">조회</button>
+      </div>
+      <div id="searchResult" class="result-box" style="display: none"></div>
+    </div>
+
+    <div class="container">
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+        "
+      >
+        <h2 style="margin: 0">최근 분석 결과 목록</h2>
+        <button onclick="loadList()" style="font-size: 12px" class="secondary">
+          🔄 새로고침
+        </button>
+      </div>
+
+      <div class="pagination-bar">
+        <div class="page-info">
+          <span id="totalCountDisplay">Total: 0</span> |
+          <label
+            >Skip:
+            <input
+              type="number"
+              id="skipInput"
+              value="0"
+              min="0"
+              onkeydown="if (event.key === 'Enter') applyManualSkip();"
+            />
+          </label>
+          <button
+            onclick="applyManualSkip()"
+            class="secondary"
+            style="padding: 2px 8px; font-size: 12px"
+          >
+            이동
+          </button>
+          |
+          <span id="limitDisplay">Limit: 10</span>
+        </div>
+        <div>
+          <button
+            onclick="changePage(-1)"
+            id="btnPrev"
+            class="secondary"
+            disabled
+          >
+            ◀ 이전
+          </button>
+          <button
+            onclick="changePage(1)"
+            id="btnNext"
+            class="secondary"
+            disabled
+          >
+            다음 ▶
+          </button>
+        </div>
+      </div>
+
+      <table id="listTable">
+        <thead>
+          <tr>
+            <th>ID (클릭하여 조회)</th>
+            <th>모델</th>
+            <th>파일명</th>
+            <th>1순위 결과</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <script>
+      const API_URL = "http://localhost:8000";
+
+      let currentSkip = 0;
+      const LIMIT = 10;
+      let totalCount = 0;
+
+      // 1. 이미지 업로드
+      document
+        .getElementById("uploadForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fileInput = document.getElementById("imageFile");
+          const modelName = document.getElementById("modelName").value;
+
+          if (fileInput.files.length === 0)
+            return alert("파일을 선택해주세요.");
+
+          const formData = new FormData();
+          formData.append("file", fileInput.files[0]);
+          formData.append("model_name", modelName);
+          formData.append("top_k", 3);
+
+          try {
+            const response = await fetch(`${API_URL}/inference`, {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!response.ok) {
+              const err = await response.text();
+              throw new Error(err);
+            }
+
+            const result = await response.json();
+
+            displayDetailResult(result, "uploadResult");
+
+            currentSkip = 0;
+            loadList();
+
+            fileInput.value = "";
+          } catch (error) {
+            alert("업로드 실패: " + error.message);
+          }
+        });
+
+      // 2. ID 조회
+      async function searchById() {
+        const idInput = document.getElementById("searchIdInput");
+        const id = idInput.value.trim();
+        if (!id) return alert("ID를 입력해주세요.");
+
+        try {
+          const response = await fetch(`${API_URL}/inference/${id}`);
+          if (response.status === 404)
+            return alert("해당 ID의 결과를 찾을 수 없습니다.");
+          if (!response.ok) throw new Error("서버 오류");
+          const data = await response.json();
+          displayDetailResult(data, "searchResult");
+        } catch (error) {
+          alert("조회 실패: " + error.message);
+        }
+      }
+
+      // [수정됨] 상세 결과 표시 (.toFixed(2) 적용)
+      function displayDetailResult(data, targetElementId) {
+        const targetDiv = document.getElementById(targetElementId);
+        targetDiv.style.display = "block";
+
+        let topkHtml = "<h4>Top-3 예측 결과</h4>";
+        if (data.topk && data.topk.length > 0) {
+          data.topk.forEach((item, index) => {
+            // [수정] 소수점 2자리까지 표시 (ex: 83.45%)
+            const percent = (item.score * 100).toFixed(2);
+            topkHtml += `
+                    <div style="margin-bottom: 8px;">
+                        <div style="display:flex; justify-content:space-between; font-size:14px;">
+                            <span>${index + 1}. <b>${item.label}</b></span>
+                            <span>${percent}%</span>
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-fill" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                  `;
+          });
+        } else {
+          topkHtml += "<p>결과 없음</p>";
+        }
+
+        targetDiv.innerHTML = `
+            <div style="display:flex; justify-content:space-between;">
+                <h3 style="margin-top:0;">상세 분석 결과</h3>
+                <button onclick="document.getElementById('${targetElementId}').style.display='none'" class="secondary" style="padding:2px 8px; font-size:12px;">닫기</button>
+            </div>
+            <p><b>ID:</b> ${data.id}</p>
+            <p><b>모델:</b> ${data.model_name}</p>
+            <p><b>파일명:</b> ${data.original_filename || "업로드 파일"}</p>
+            <p><b>분석일시:</b> ${data.created_at ? new Date(data.created_at).toLocaleString() : "-"}</p>
+            <hr>
+            ${topkHtml}
+          `;
+      }
+
+      // 3. 목록 조회
+      async function loadList() {
+        try {
+          document.getElementById("skipInput").value = currentSkip;
+
+          const response = await fetch(
+            `${API_URL}/inference?skip=${currentSkip}&limit=${LIMIT}`,
+          );
+          if (!response.ok) throw new Error("로드 실패");
+
+          const data = await response.json();
+          totalCount = data.count;
+
+          document.getElementById("totalCountDisplay").innerText =
+            `Total: ${totalCount}`;
+          document.getElementById("limitDisplay").innerText = `Limit: ${LIMIT}`;
+
+          document.getElementById("btnPrev").disabled = currentSkip === 0;
+          document.getElementById("btnNext").disabled =
+            currentSkip + LIMIT >= totalCount;
+
+          const tbody = document.querySelector("#listTable tbody");
+          tbody.innerHTML = "";
+
+          if (!data.items || data.items.length === 0) {
+            tbody.innerHTML =
+              "<tr><td colspan='4' style='text-align:center; padding: 30px;'>데이터가 없습니다.</td></tr>";
+            return;
+          }
+
+          // [수정됨] 목록 테이블 표시 (.toFixed(2) 적용)
+          const rows = data.items
+            .map((item) => {
+              let firstResultStr = "-";
+              if (item.topk && item.topk.length > 0) {
+                // [수정] 소수점 2자리까지 표시
+                firstResultStr = `${item.topk[0].label} (${(item.topk[0].score * 100).toFixed(2)}%)`;
+              }
+
+              return `<tr>
+                <td><span class="clickable-id" onclick="clickId('${item.id}')">${item.id}</span></td>
+                <td>${item.model_name}</td>
+                <td>${item.original_filename}</td>
+                <td>${firstResultStr}</td>
+            </tr>`;
+            })
+            .join("");
+
+          tbody.innerHTML = rows;
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      function applyManualSkip() {
+        const input = document.getElementById("skipInput");
+        let val = parseInt(input.value);
+
+        if (isNaN(val) || val < 0) {
+          val = 0;
+        }
+
+        currentSkip = val;
+        loadList();
+      }
+
+      function changePage(direction) {
+        const newSkip = currentSkip + direction * LIMIT;
+        if (newSkip < 0) return;
+
+        currentSkip = newSkip;
+        loadList();
+      }
+
+      function clickId(id) {
+        document.getElementById("searchIdInput").value = id;
+        searchById();
+        document
+          .getElementById("searchIdInput")
+          .scrollIntoView({ behavior: "smooth" });
+      }
+
+      // 초기 로딩
+      loadList();
+    </script>
+  </body>
+</html>

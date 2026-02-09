@@ -1,0 +1,5 @@
+.env
+backend/uploads
+frontend/node_modules
+backend/__pycache__
+frontend/package-lock.json
